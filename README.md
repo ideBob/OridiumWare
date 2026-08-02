@@ -1,6 +1,6 @@
 # Oridium Ware
 
-Roblox utility script by Julian.
+Roblox utility script.
 
 ## Features
 
@@ -8,7 +8,6 @@ Roblox utility script by Julian.
 - Death Aura
 - Headless
 - Korblox / Remove Korblox
-- Check RepStorage & Animations
 
 ### Movement
 - Auto Edge Trimp
@@ -22,10 +21,6 @@ Roblox utility script by Julian.
 
 ## Usage
 
-Load with your preferred executor:
-
 ```lua
 loadstring(game:HttpGet("https://raw.githubusercontent.com/ideBob/OridiumWare/main/OridiumWare.lua"))()
 ```
-
-Or paste the contents of `OridiumWare.lua` into your executor.
