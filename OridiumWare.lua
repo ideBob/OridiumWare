@@ -19,7 +19,7 @@ local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 local Window = Rayfield:CreateWindow({
    Name            = "Oridium Ware",
    LoadingTitle    = "Oridium Ware",
-   LoadingSubtitle = "by Julian",
+   LoadingSubtitle = "",
    Theme           = "Amethyst",
    ConfigurationSaving = { Enabled = false },
    KeySystem       = false,
@@ -173,73 +173,6 @@ MainTab:CreateButton({Name="Remove Korblox",Callback=function()
    if rl then cleanupByName(rl,"KorbloxPart") rl.Transparency=0 notify("Removed","Korblox off.",3) end
 end})
 
-local repScanGui=nil local activeRepTrack=nil local activeRepName="None"
-MainTab:CreateButton({Name="Check RepStorage & Animations",Callback=function()
-   if repScanGui then safeDestroy(repScanGui) repScanGui=nil return end
-   notify("Scanning...","RepStorage > Items > Emotes",3)
-   task.spawn(function()
-       local foundEmotes={}
-       local function tryGet(p,n) local ok,f=pcall(function() return p:WaitForChild(n,3) end) return ok and f or nil end
-       local itemsF=tryGet(ReplicatedStorage,"Items") local emotesF=itemsF and tryGet(itemsF,"Emotes")
-       local pathTxt=emotesF and "RepStorage › Items › Emotes" or "Full scan"
-       local function dig(p,d)
-           local ok,ch=pcall(function() return p:GetChildren() end) if not ok then return end
-           for _,obj in ipairs(ch) do
-               if obj:IsA("Animation") then table.insert(foundEmotes,{name=obj.Name,id=tostring(obj.AnimationId):gsub("rbxassetid://","")})
-               elseif d<5 then dig(obj,d+1) end
-           end
-       end
-       if emotesF then dig(emotesF,0)
-       else local function dA(p,d) local ok,ch=pcall(function() return p:GetChildren() end) if not ok or d>6 then return end
-           for _,obj in ipairs(ch) do if obj:IsA("Animation") then table.insert(foundEmotes,{name=obj.Name,id=tostring(obj.AnimationId):gsub("rbxassetid://","")}) end dA(obj,d+1) end end dA(ReplicatedStorage,0)
-       end
-       local sg=Instance.new("ScreenGui") sg.Name="OwRepScan" sg.ResetOnSpawn=false sg.IgnoreGuiInset=true sg.DisplayOrder=997 sg.Parent=lp.PlayerGui repScanGui=sg
-       local card=makeCard(sg,300,430) makeCardHeader(card,"  "..pathTxt,function() safeDestroy(sg) repScanGui=nil end)
-       local sBar,_=makePill(card,278,26,UDim2.new(0.5,-139,0,48))
-       local npL=makeLabel(sBar,"No emote playing",9,P.dim,Enum.TextXAlignment.Left,UDim2.new(0,10,0,0),UDim2.new(0.6,0,1,0))
-       makeLabel(sBar,#foundEmotes.." found",9,P.dim,Enum.TextXAlignment.Right,UDim2.new(0.38,0,0,0),UDim2.new(0.58,0,1,0))
-       local npConn npConn=RunService.Heartbeat:Connect(function()
-           if not repScanGui then npConn:Disconnect() return end
-           npL.Text=activeRepName=="None" and "No emote playing" or "▸ "..activeRepName
-           npL.TextColor3=activeRepName=="None" and P.dim or P.accent
-       end)
-       local stopF,_=makePill(card,80,24,UDim2.new(1,-88,0,50))
-       local stopB=Instance.new("TextButton",stopF) stopB.Size=UDim2.new(1,0,1,0) stopB.BackgroundTransparency=1 stopB.Text="Stop" stopB.TextColor3=P.text stopB.TextSize=10 stopB.Font=Enum.Font.GothamBold
-       stopB.MouseButton1Click:Connect(function() if activeRepTrack then pcall(function() activeRepTrack:Stop() end) activeRepTrack=nil end activeRepName="None" notify("Stopped","Animation stopped.",2) end)
-       local div=Instance.new("Frame",card) div.Size=UDim2.new(1,-20,0,1) div.Position=UDim2.new(0,10,0,83) div.BackgroundColor3=P.accent div.BackgroundTransparency=0.75 div.BorderSizePixel=0
-       local scroll=makeScroll(card,UDim2.new(0,4,0,88),UDim2.new(1,-8,1,-92))
-       if #foundEmotes==0 then
-           local row=Instance.new("Frame",scroll) row.Size=UDim2.new(1,0,0,48) row.BackgroundColor3=P.bgLight row.BorderSizePixel=0
-           Instance.new("UICorner",row).CornerRadius=UDim.new(0,10) makeLabel(row,"No animations found.",11,P.dim)
-       else
-           for i,e in ipairs(foundEmotes) do
-               local row=Instance.new("Frame",scroll) row.Size=UDim2.new(1,0,0,48) row.BackgroundColor3=P.bgMid row.BorderSizePixel=0 row.LayoutOrder=i
-               Instance.new("UICorner",row).CornerRadius=UDim.new(0,10)
-               local rs=Instance.new("UIStroke",row) rs.Color=P.stroke rs.Thickness=0.8 rs.Transparency=0.6
-               local strip=Instance.new("Frame",row) strip.Size=UDim2.new(0,3,0.6,0) strip.Position=UDim2.new(0,0,0.2,0) strip.BackgroundColor3=P.accent strip.BorderSizePixel=0
-               Instance.new("UICorner",strip).CornerRadius=UDim.new(1,0)
-               makeLabel(row,e.name,11,P.text,Enum.TextXAlignment.Left,UDim2.new(0,12,0,5),UDim2.new(1,-80,0,22))
-               makeLabel(row,"id: "..e.id,8,P.dim,Enum.TextXAlignment.Left,UDim2.new(0,12,0,26),UDim2.new(1,-80,0,16))
-               local pF,_=makePill(row,52,24,UDim2.new(1,-60,0.5,-12))
-               local pL=Instance.new("TextButton",pF) pL.Size=UDim2.new(1,0,1,0) pL.BackgroundTransparency=1 pL.Text="PLAY" pL.TextColor3=P.accent pL.TextSize=10 pL.Font=Enum.Font.GothamBold
-               local thisE=e
-               pL.MouseButton1Click:Connect(function()
-                   local hum=getHum() if not hum then notify("Error","No humanoid.",2) return end
-                   local animr=hum:FindFirstChildOfClass("Animator") or Instance.new("Animator",hum)
-                   if activeRepTrack then pcall(function() activeRepTrack:Stop() end) activeRepTrack=nil end
-                   local a=Instance.new("Animation") a.AnimationId="rbxassetid://"..thisE.id
-                   local ok,track=pcall(function() return animr:LoadAnimation(a) end)
-                   if ok and track then track.Priority=Enum.AnimationPriority.Action track:Play() activeRepTrack=track activeRepName=thisE.name notify("Playing",thisE.name,2)
-                   else notify("Error","Cannot load anim.",3) end
-               end)
-               row.MouseEnter:Connect(function() row.BackgroundColor3=Color3.fromRGB(24,14,44) end)
-               row.MouseLeave:Connect(function() row.BackgroundColor3=P.bgMid end)
-           end
-       end
-       notify("Done",#foundEmotes.." emote(s) found.",3)
-   end)
-end})
-
 -- ============================================================
 -- MOVEMENT TAB
 -- ============================================================
@@ -273,7 +206,6 @@ MovementTab:CreateButton({Name="Auto Edge Trimp",Callback=function()
        local cf=hrp.CFrame local pos=hrp.Position
        local vel=hrp.Velocity
        local hSpeed=Vector3.new(vel.X,0,vel.Z).Magnitude
-       -- Reach grows with speed so fast movement catches ledges wider
        local REACH=math.clamp(hSpeed*0.07+2.8, 2.8, 5.2)
        local dirs={
            cf.LookVector,-cf.LookVector,
@@ -291,12 +223,9 @@ MovementTab:CreateButton({Name="Auto Edge Trimp",Callback=function()
            for _,dir in ipairs(dirs) do
                local hit=workspace:Raycast(pos+offset, dir*REACH, params)
                if hit and math.abs(hit.Normal.Y)<0.45 then
-                   -- Fall speed bonus: faster fall = higher pop
                    local fallBoost=math.clamp(math.abs(math.min(vel.Y,0))*0.55, 0, 34)
                    local LAUNCH_UP=80+fallBoost
-                   -- Horizontal carry bonus from speed
                    local H_MULT=1.50+math.clamp(hSpeed*0.004, 0, 0.28)
-                   -- Away-from-wall kick so you don't clip back in
                    local awayDir=Vector3.new(hit.Normal.X,0,hit.Normal.Z)
                    local awayKick=awayDir.Magnitude>0.05 and awayDir.Unit*15 or Vector3.zero
                    setVelocity(hrp, Vector3.new(
@@ -350,7 +279,6 @@ MovementTab:CreateButton({Name="Auto Bounce",Callback=function()
        if tick()-lastBounce<COOLDOWN then return end
        params.FilterDescendantsInstances={char}
        params.FilterType=Enum.RaycastFilterType.Exclude
-       -- Ray gets longer the faster you fall
        local rayLen=math.clamp(math.abs(vy)*0.14+3.5, 3.5, 11)
        local hit=workspace:Raycast(hrp.Position, Vector3.new(0,-rayLen,0), params)
        if hit then
@@ -358,11 +286,8 @@ MovementTab:CreateButton({Name="Auto Bounce",Callback=function()
            if nY>=0.15 and nY<=0.92 then
                highlightSlopePart(hit.Instance)
                local fallSpd=math.abs(vy)
-               -- Bounce height scales with fall speed
                local LAUNCH_UP=math.clamp(55+fallSpd*0.62, 55, 118)
-               -- Horizontal preserve scales with fall speed
                local H_PRESERVE=math.clamp(1.06+fallSpd*0.004, 1.06, 1.28)
-               -- Slope pushes you in its outward direction
                local slopeDir=Vector3.new(hit.Normal.X,0,hit.Normal.Z)
                local slopeBoost=slopeDir.Magnitude>0.08
                    and slopeDir.Unit*(fallSpd*0.26)
