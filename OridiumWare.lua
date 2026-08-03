@@ -20,7 +20,7 @@ local Window = Rayfield:CreateWindow({
    Name            = "Oridium Ware",
    LoadingTitle    = "Oridium Ware",
    LoadingSubtitle = "",
-   Theme           = "Amethyst",
+   Theme           = "Blue",
    ConfigurationSaving = { Enabled = false },
    KeySystem       = false,
 })
@@ -30,6 +30,7 @@ task.wait(1)
 local MainTab     = Window:CreateTab("Main Tab",       nil)
 local MovementTab = Window:CreateTab("Movement",       nil)
 local LightingTab = Window:CreateTab("Lighting & Map", nil)
+local PshadeTab   = Window:CreateTab("Pshades Shader", nil)
 
 -- ============================================================
 -- UTILITIES
@@ -50,18 +51,19 @@ local function setVelocity(hrp,vel)
    if not ok then pcall(function() hrp.Velocity=vel end) end
 end
 
+-- Cyan / blue palette for custom UI
 local P = {
-   bg         = Color3.fromRGB(9,  6, 18),
-   bgLight    = Color3.fromRGB(15, 9, 28),
-   bgMid      = Color3.fromRGB(20,12, 38),
-   stroke     = Color3.fromRGB(98, 28,175),
-   accent     = Color3.fromRGB(148,68,235),
-   accentSoft = Color3.fromRGB(120,50,200),
-   text       = Color3.fromRGB(195,170,245),
-   dim        = Color3.fromRGB(110,78,168),
-   on         = Color3.fromRGB(148,68,235),
-   off        = Color3.fromRGB(55, 18,100),
-   white      = Color3.fromRGB(230,220,255),
+   bg         = Color3.fromRGB(6,  14, 22),
+   bgLight    = Color3.fromRGB(10, 22, 34),
+   bgMid      = Color3.fromRGB(12, 28, 42),
+   stroke     = Color3.fromRGB(20, 140, 200),
+   accent     = Color3.fromRGB(0, 200, 255),
+   accentSoft = Color3.fromRGB(0, 150, 210),
+   text       = Color3.fromRGB(180, 230, 255),
+   dim        = Color3.fromRGB(80, 140, 170),
+   on         = Color3.fromRGB(0, 200, 255),
+   off        = Color3.fromRGB(20, 50, 70),
+   white      = Color3.fromRGB(230, 245, 255),
 }
 
 local function makeDraggable(f)
@@ -132,6 +134,17 @@ local function makeScroll(parent,pos,size)
    return scroll
 end
 
+-- True only for world Parts (not characters / entities)
+local function isWorldPart(inst)
+   if not inst or not inst:IsA("BasePart") then return false end
+   local model = inst:FindFirstAncestorOfClass("Model")
+   if model then
+      if model:FindFirstChildOfClass("Humanoid") then return false end
+      if Players:GetPlayerFromCharacter(model) then return false end
+   end
+   return true
+end
+
 -- ============================================================
 -- MAIN TAB
 -- ============================================================
@@ -177,73 +190,74 @@ end})
 -- MOVEMENT TAB
 -- ============================================================
 
--- ── IMPROVED AUTO EDGE TRIMP ──────────────────────────────────────────
--- Reach scales with horizontal speed. Launch scales with fall speed.
--- Away-from-wall kick added. 4 vertical cast levels. 0.10s chain cooldown.
+-- ── AUTO EDGE TRIMP (reworked) ────────────────────────────────
+-- Only triggers on edge of a world Part (not players/entities).
+-- Fixed upward launch: 230 studs.
 
 local edgeActive=false local edgeConn=nil
 MovementTab:CreateButton({Name="Auto Edge Trimp",Callback=function()
    if edgeActive then
-       edgeActive=false
-       if edgeConn then edgeConn:Disconnect() edgeConn=nil end
-       notify("Edge Trimp","OFF.",2) return
+      edgeActive=false
+      if edgeConn then edgeConn:Disconnect() edgeConn=nil end
+      notify("Edge Trimp","OFF.",2) return
    end
    edgeActive=true
    local lastTrimp=0
-   local COOLDOWN=0.10
+   local COOLDOWN=0.12
+   local LAUNCH_UP=230
    local params=RaycastParams.new()
 
    edgeConn=RunService.Heartbeat:Connect(function()
-       if not edgeActive then return end
-       local hrp=getHRP() local hum=getHum() local char=getChar()
-       if not hrp or not hum or not char then return end
-       local state=hum:GetState()
-       local inAir=state==Enum.HumanoidStateType.Freefall or state==Enum.HumanoidStateType.Jumping
-       if not inAir then lastTrimp=0 return end
-       if tick()-lastTrimp<COOLDOWN then return end
-       params.FilterDescendantsInstances={char}
-       params.FilterType=Enum.RaycastFilterType.Exclude
-       local cf=hrp.CFrame local pos=hrp.Position
-       local vel=hrp.Velocity
-       local hSpeed=Vector3.new(vel.X,0,vel.Z).Magnitude
-       local REACH=math.clamp(hSpeed*0.07+2.8, 2.8, 5.2)
-       local dirs={
-           cf.LookVector,-cf.LookVector,
-           cf.RightVector,-cf.RightVector,
-           (cf.LookVector+cf.RightVector).Unit,
-           (cf.LookVector-cf.RightVector).Unit,
-           (-cf.LookVector+cf.RightVector).Unit,
-           (-cf.LookVector-cf.RightVector).Unit,
-       }
-       local offsets={
-           Vector3.new(0,1.0,0), Vector3.new(0,0,0),
-           Vector3.new(0,-1.3,0), Vector3.new(0,-2.7,0),
-       }
-       for _,offset in ipairs(offsets) do
-           for _,dir in ipairs(dirs) do
-               local hit=workspace:Raycast(pos+offset, dir*REACH, params)
-               if hit and math.abs(hit.Normal.Y)<0.45 then
-                   local fallBoost=math.clamp(math.abs(math.min(vel.Y,0))*0.55, 0, 34)
-                   local LAUNCH_UP=80+fallBoost
-                   local H_MULT=1.50+math.clamp(hSpeed*0.004, 0, 0.28)
-                   local awayDir=Vector3.new(hit.Normal.X,0,hit.Normal.Z)
-                   local awayKick=awayDir.Magnitude>0.05 and awayDir.Unit*15 or Vector3.zero
-                   setVelocity(hrp, Vector3.new(
-                       vel.X*H_MULT + awayKick.X,
-                       LAUNCH_UP,
-                       vel.Z*H_MULT + awayKick.Z
-                   ))
-                   lastTrimp=tick() return
-               end
-           end
-       end
+      if not edgeActive then return end
+      local hrp=getHRP() local hum=getHum() local char=getChar()
+      if not hrp or not hum or not char then return end
+      local state=hum:GetState()
+      local inAir=state==Enum.HumanoidStateType.Freefall or state==Enum.HumanoidStateType.Jumping
+      if not inAir then lastTrimp=0 return end
+      if tick()-lastTrimp<COOLDOWN then return end
+
+      params.FilterDescendantsInstances={char}
+      params.FilterType=Enum.RaycastFilterType.Exclude
+
+      local cf=hrp.CFrame local pos=hrp.Position
+      local vel=hrp.Velocity
+      local hSpeed=Vector3.new(vel.X,0,vel.Z).Magnitude
+      local REACH=math.clamp(hSpeed*0.07+2.8, 2.8, 5.2)
+
+      local dirs={
+         cf.LookVector,-cf.LookVector,
+         cf.RightVector,-cf.RightVector,
+         (cf.LookVector+cf.RightVector).Unit,
+         (cf.LookVector-cf.RightVector).Unit,
+         (-cf.LookVector+cf.RightVector).Unit,
+         (-cf.LookVector-cf.RightVector).Unit,
+      }
+      local offsets={
+         Vector3.new(0,1.0,0), Vector3.new(0,0,0),
+         Vector3.new(0,-1.3,0), Vector3.new(0,-2.7,0),
+      }
+
+      for _,offset in ipairs(offsets) do
+         for _,dir in ipairs(dirs) do
+            local hit=workspace:Raycast(pos+offset, dir*REACH, params)
+            if hit and math.abs(hit.Normal.Y)<0.45 and isWorldPart(hit.Instance) then
+               local awayDir=Vector3.new(hit.Normal.X,0,hit.Normal.Z)
+               local awayKick=awayDir.Magnitude>0.05 and awayDir.Unit*18 or Vector3.zero
+               setVelocity(hrp, Vector3.new(
+                  vel.X*1.15 + awayKick.X,
+                  LAUNCH_UP,
+                  vel.Z*1.15 + awayKick.Z
+               ))
+               lastTrimp=tick()
+               return
+            end
+         end
+      end
    end)
-   notify("Edge Trimp","ON — speed scaling + away kick.",3)
+   notify("Edge Trimp","ON — 230 stud launch on part edges only.",3)
 end})
 
--- ── IMPROVED AUTO BOUNCE ──────────────────────────────────────────────
--- Ray length scales with fall speed. Bounce height scales with fall speed.
--- Slope-direction boost pushes you naturally off slope. Tighter cooldown.
+-- ── AUTO BOUNCE (higher) ──────────────────────────────────────
 
 local bounceActive=false local bounceConn=nil local bounceHighlight=nil
 
@@ -251,58 +265,254 @@ local function highlightSlopePart(part)
    if bounceHighlight then safeDestroy(bounceHighlight) bounceHighlight=nil end
    if not part or not part.Parent then return end
    local sb=Instance.new("SelectionBox")
-   sb.Adornee=part sb.Color3=Color3.fromRGB(148,68,235)
+   sb.Adornee=part sb.Color3=P.accent
    sb.LineThickness=0.06 sb.SurfaceTransparency=0.65
-   sb.SurfaceColor3=Color3.fromRGB(148,68,235) sb.Parent=workspace
+   sb.SurfaceColor3=P.accent sb.Parent=workspace
    bounceHighlight=sb
    task.delay(0.35,function()
-       if bounceHighlight==sb then safeDestroy(sb) bounceHighlight=nil end
+      if bounceHighlight==sb then safeDestroy(sb) bounceHighlight=nil end
    end)
 end
 
 MovementTab:CreateButton({Name="Auto Bounce",Callback=function()
    if bounceActive then
-       bounceActive=false
-       if bounceConn then bounceConn:Disconnect() bounceConn=nil end
-       if bounceHighlight then safeDestroy(bounceHighlight) bounceHighlight=nil end
-       notify("Auto Bounce","OFF.",2) return
+      bounceActive=false
+      if bounceConn then bounceConn:Disconnect() bounceConn=nil end
+      if bounceHighlight then safeDestroy(bounceHighlight) bounceHighlight=nil end
+      notify("Auto Bounce","OFF.",2) return
    end
    bounceActive=true
-   local lastBounce=0 local COOLDOWN=0.20
+   local lastBounce=0 local COOLDOWN=0.18
    local params=RaycastParams.new()
 
    bounceConn=RunService.Heartbeat:Connect(function()
-       local hrp=getHRP() local hum=getHum() local char=getChar()
-       if not hrp or not hum or not char then return end
-       local vy=hrp.Velocity.Y
-       if vy>-5 then return end
-       if tick()-lastBounce<COOLDOWN then return end
-       params.FilterDescendantsInstances={char}
-       params.FilterType=Enum.RaycastFilterType.Exclude
-       local rayLen=math.clamp(math.abs(vy)*0.14+3.5, 3.5, 11)
-       local hit=workspace:Raycast(hrp.Position, Vector3.new(0,-rayLen,0), params)
-       if hit then
-           local nY=hit.Normal.Y
-           if nY>=0.15 and nY<=0.92 then
-               highlightSlopePart(hit.Instance)
-               local fallSpd=math.abs(vy)
-               local LAUNCH_UP=math.clamp(55+fallSpd*0.62, 55, 118)
-               local H_PRESERVE=math.clamp(1.06+fallSpd*0.004, 1.06, 1.28)
-               local slopeDir=Vector3.new(hit.Normal.X,0,hit.Normal.Z)
-               local slopeBoost=slopeDir.Magnitude>0.08
-                   and slopeDir.Unit*(fallSpd*0.26)
-                   or Vector3.zero
-               hum.Jump=true
-               setVelocity(hrp, Vector3.new(
-                   hrp.Velocity.X*H_PRESERVE + slopeBoost.X,
-                   LAUNCH_UP,
-                   hrp.Velocity.Z*H_PRESERVE + slopeBoost.Z
-               ))
-               lastBounce=tick()
-           end
-       end
+      local hrp=getHRP() local hum=getHum() local char=getChar()
+      if not hrp or not hum or not char then return end
+      local vy=hrp.Velocity.Y
+      if vy>-5 then return end
+      if tick()-lastBounce<COOLDOWN then return end
+      params.FilterDescendantsInstances={char}
+      params.FilterType=Enum.RaycastFilterType.Exclude
+      local rayLen=math.clamp(math.abs(vy)*0.16+4, 4, 14)
+      local hit=workspace:Raycast(hrp.Position, Vector3.new(0,-rayLen,0), params)
+      if hit and isWorldPart(hit.Instance) then
+         local nY=hit.Normal.Y
+         if nY>=0.15 and nY<=0.92 then
+            highlightSlopePart(hit.Instance)
+            local fallSpd=math.abs(vy)
+            local LAUNCH_UP=math.clamp(95+fallSpd*0.95, 95, 200)
+            local H_PRESERVE=math.clamp(1.08+fallSpd*0.005, 1.08, 1.35)
+            local slopeDir=Vector3.new(hit.Normal.X,0,hit.Normal.Z)
+            local slopeBoost=slopeDir.Magnitude>0.08
+               and slopeDir.Unit*(fallSpd*0.30)
+               or Vector3.zero
+            hum.Jump=true
+            setVelocity(hrp, Vector3.new(
+               hrp.Velocity.X*H_PRESERVE + slopeBoost.X,
+               LAUNCH_UP,
+               hrp.Velocity.Z*H_PRESERVE + slopeBoost.Z
+            ))
+            lastBounce=tick()
+         end
+      end
    end)
-   notify("Auto Bounce","ON — dynamic power + slope boost.",3)
+   notify("Auto Bounce","ON — higher launch.",3)
+end})
+
+-- ── ORIDIUM WALK (wall walk) ──────────────────────────────────
+-- Hold W + Space while against a wall → stick and walk on it.
+
+local walkActive=false local walkConn=nil local walkJumpConn=nil
+local walkStuck=false local walkNormal=Vector3.zero
+
+MovementTab:CreateButton({Name="Oridium Walk",Callback=function()
+   if walkActive then
+      walkActive=false walkStuck=false
+      if walkConn then walkConn:Disconnect() walkConn=nil end
+      if walkJumpConn then walkJumpConn:Disconnect() walkJumpConn=nil end
+      notify("Oridium Walk","OFF.",2) return
+   end
+   walkActive=true walkStuck=false
+
+   local WALL_REACH=3.2
+   local params=RaycastParams.new()
+
+   walkConn=RunService.Heartbeat:Connect(function(dt)
+      if not walkActive then return end
+      local hrp=getHRP() local hum=getHum() local char=getChar()
+      if not hrp or not hum or not char then return end
+
+      local wHeld = UserInputService:IsKeyDown(Enum.KeyCode.W)
+         or UserInputService:IsKeyDown(Enum.KeyCode.Up)
+      local spaceHeld = UserInputService:IsKeyDown(Enum.KeyCode.Space)
+
+      params.FilterDescendantsInstances={char}
+      params.FilterType=Enum.RaycastFilterType.Exclude
+
+      local pos=hrp.Position local cf=hrp.CFrame
+      local dirs={
+         cf.LookVector,-cf.LookVector,
+         cf.RightVector,-cf.RightVector,
+         (cf.LookVector+cf.RightVector).Unit,
+         (cf.LookVector-cf.RightVector).Unit,
+         (-cf.LookVector+cf.RightVector).Unit,
+         (-cf.LookVector-cf.RightVector).Unit,
+      }
+      local vOffs={Vector3.new(0,1.0,0), Vector3.new(0,-0.3,0), Vector3.new(0,-1.6,0)}
+      local foundNormal=nil
+      for _,vo in ipairs(vOffs) do
+         if foundNormal then break end
+         for _,dir in ipairs(dirs) do
+            local hit=workspace:Raycast(pos+vo, dir*WALL_REACH, params)
+            if hit and math.abs(hit.Normal.Y)<0.40 and isWorldPart(hit.Instance) then
+               foundNormal=hit.Normal break
+            end
+         end
+      end
+
+      if foundNormal and wHeld and spaceHeld then
+         walkStuck=true
+         walkNormal=foundNormal
+         local vel=hrp.Velocity
+         local awayDot=vel:Dot(foundNormal)
+         local awayComp=foundNormal * math.max(awayDot, 0)
+         local gravComp=196 * dt * 0.92
+         local climb = 18
+         local newVY=math.max(vel.Y + gravComp, climb)
+         local stick=(-foundNormal) * 8 * dt
+         local look=cf.LookVector
+         local along=look - foundNormal * look:Dot(foundNormal)
+         if along.Magnitude>0.05 then along=along.Unit*22 else along=Vector3.zero end
+         setVelocity(hrp, Vector3.new(
+            along.X - awayComp.X + stick.X,
+            newVY,
+            along.Z - awayComp.Z + stick.Z
+         ))
+      else
+         walkStuck=false
+      end
+   end)
+   notify("Oridium Walk","ON — hold W + Space on a wall to climb.",4)
+end})
+
+-- ── ORIDIUM JUMP (bhop / ramp boost) ──────────────────────────
+
+local jumpActive=false
+local jumpConns={}
+local jumpHolding=false
+local jumpAccel=0
+local jumpMovementModule=nil
+local jumpOriginalFriction=nil
+
+local function jumpCleanup()
+   for _,c in ipairs(jumpConns) do pcall(function() c:Disconnect() end) end
+   jumpConns={}
+   jumpHolding=false
+   jumpAccel=0
+   if jumpMovementModule and jumpOriginalFriction then
+      pcall(function() jumpMovementModule.ApplyFriction=jumpOriginalFriction end)
+   end
+   jumpMovementModule=nil
+   jumpOriginalFriction=nil
+end
+
+local function jumpApplyModule()
+   if not jumpMovementModule or not jumpOriginalFriction then return end
+   jumpMovementModule.ApplyFriction=function(self,friction)
+      if jumpHolding and self.a==true then
+         local boost=0.02
+         local hrp=getHRP() local char=getChar()
+         if hrp and char then
+            local rp=RaycastParams.new()
+            rp.FilterType=Enum.RaycastFilterType.Exclude
+            rp.FilterDescendantsInstances={char}
+            local ray=workspace:Raycast(hrp.Position,Vector3.new(0,-4,0),rp)
+            if ray and isWorldPart(ray.Instance) then
+               local angle=math.deg(math.acos(math.clamp(ray.Normal:Dot(Vector3.new(0,1,0)),-1,1)))
+               if angle>5 and angle<60 then
+                  local rampFactor=math.clamp(angle/60,0,1)
+                  boost=boost+(0.16+(0.20-0.16)*rampFactor)
+               end
+            end
+         end
+         jumpAccel=math.clamp(jumpAccel+boost,0,0.1)
+         local speed=0
+         if hrp then speed=(hrp.Velocity*Vector3.new(1,0,1)).Magnitude end
+         local smooth=jumpAccel*(speed/55)
+         friction=friction-smooth
+      else
+         jumpAccel=math.clamp(jumpAccel-0.01,0,0.1)
+      end
+      return jumpOriginalFriction(self,friction)
+   end
+end
+
+local function jumpWatchModule(char)
+   local movement=char:FindFirstChild("Movement") or char:WaitForChild("Movement",3)
+   if not movement then return end
+   local ok,module=pcall(require,movement)
+   if ok and module then
+      jumpMovementModule=module
+      if not jumpOriginalFriction then
+         jumpOriginalFriction=module.ApplyFriction
+      end
+      jumpApplyModule()
+   end
+end
+
+local function jumpSetupChar(char)
+   local hum=char:WaitForChild("Humanoid",5)
+   local root=char:WaitForChild("HumanoidRootPart",5)
+   if not hum or not root then return end
+   hum.UseJumpPower=true
+   if hum.JumpPower<16 then hum.JumpPower=16 end
+   jumpWatchModule(char)
+end
+
+MovementTab:CreateButton({Name="Oridium Jump",Callback=function()
+   if jumpActive then
+      jumpActive=false
+      jumpCleanup()
+      notify("Oridium Jump","OFF.",2)
+      return
+   end
+   jumpActive=true
+   jumpHolding=false
+   jumpAccel=0
+
+   table.insert(jumpConns, RunService.Heartbeat:Connect(function()
+      if not jumpActive then return end
+      local hum=getHum()
+      if not hum then return end
+      if jumpHolding
+         and hum.FloorMaterial~=Enum.Material.Air
+         and hum:GetState()~=Enum.HumanoidStateType.Dead then
+         hum.Jump=true
+      end
+   end))
+
+   table.insert(jumpConns, UserInputService.JumpRequest:Connect(function()
+      if jumpActive then jumpHolding=true end
+   end))
+
+   table.insert(jumpConns, UserInputService.InputEnded:Connect(function(input)
+      if input.UserInputType==Enum.UserInputType.Touch
+         or input.KeyCode==Enum.KeyCode.Space then
+         jumpHolding=false
+      end
+   end))
+
+   table.insert(jumpConns, lp.CharacterAdded:Connect(function(char)
+      if jumpActive then
+         task.defer(function() jumpSetupChar(char) end)
+      end
+   end))
+
+   if lp.Character then
+      task.spawn(function() jumpSetupChar(lp.Character) end)
+   end
+
+   notify("Oridium Jump","ON — hold jump to bhop / ramp boost.",3)
 end})
 
 -- ============================================================
@@ -360,9 +570,9 @@ LightingTab:CreateButton({Name="Open Map Loader",Callback=function()
        rBtn.MouseButton1Click:Connect(function()
            selectedMapKey=md selL.Text="▸  "..md.label selL.TextColor3=P.accent
            if selectedRow and selectedRow~=row then selectedRow.BackgroundColor3=P.bgMid local ors=selectedRow:FindFirstChildOfClass("UIStroke") if ors then ors.Color=P.stroke ors.Transparency=0.65 end end
-           row.BackgroundColor3=Color3.fromRGB(28,14,52) rs.Color=P.accent rs.Transparency=0.1 selectedRow=row
+           row.BackgroundColor3=Color3.fromRGB(10,40,55) rs.Color=P.accent rs.Transparency=0.1 selectedRow=row
        end)
-       row.MouseEnter:Connect(function() if row~=selectedRow then row.BackgroundColor3=Color3.fromRGB(22,12,40) end end)
+       row.MouseEnter:Connect(function() if row~=selectedRow then row.BackgroundColor3=Color3.fromRGB(10,32,48) end end)
        row.MouseLeave:Connect(function() if row~=selectedRow then row.BackgroundColor3=P.bgMid end end)
    end
 end})
@@ -388,6 +598,34 @@ LightingTab:CreateButton({Name="Remove Skybox",Callback=function()
    local removed=false for _,v in ipairs(Lighting:GetChildren()) do if v:IsA("Sky") then v:Destroy() removed=true end end
    notify("Skybox",removed and "Removed." or "No skybox found.",3)
 end})
+
+-- ============================================================
+-- PSHADES SHADER TAB
+-- Loads PShade Ultimate (external). Own UI opens after load.
+-- ============================================================
+
+local pshadeLoaded=false
+PshadeTab:CreateButton({Name="Load PShade Ultimate",Callback=function()
+   if pshadeLoaded or _G.pshade then
+      notify("PShade","Already loaded.",3)
+      return
+   end
+   notify("PShade","Loading…",2)
+   task.spawn(function()
+      local ok,err=pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/randomstring0/pshade-ultimate/refs/heads/main/src/back.json"))()
+      end)
+      if ok then
+         pshadeLoaded=true
+         notify("PShade","Loaded. Use its UI to control shaders.",4)
+      else
+         notify("PShade","Load failed.",4)
+         warn("[Oridium] PShade error:", err)
+      end
+   end)
+end})
+
+PshadeTab:CreateParagraph({Title="About",Content="Loads PShade Ultimate by @Im_patrick. Opens its own shader UI after load. Run once per session."})
 
 -- [[ SIGNATURE ]] --
 print("--- [ Oridium Ware ] ---")
