@@ -192,7 +192,7 @@ end})
 
 -- ── AUTO EDGE TRIMP (reworked) ────────────────────────────────
 -- Only triggers on edge of a world Part (not players/entities).
--- Fixed upward launch: 230 studs.
+-- Fixed upward launch: 130 studs.
 
 local edgeActive=false local edgeConn=nil
 MovementTab:CreateButton({Name="Auto Edge Trimp",Callback=function()
@@ -204,7 +204,7 @@ MovementTab:CreateButton({Name="Auto Edge Trimp",Callback=function()
    edgeActive=true
    local lastTrimp=0
    local COOLDOWN=0.12
-   local LAUNCH_UP=230
+   local LAUNCH_UP=130
    local params=RaycastParams.new()
 
    edgeConn=RunService.Heartbeat:Connect(function()
@@ -254,7 +254,7 @@ MovementTab:CreateButton({Name="Auto Edge Trimp",Callback=function()
          end
       end
    end)
-   notify("Edge Trimp","ON — 230 stud launch on part edges only.",3)
+   notify("Edge Trimp","ON — 130 stud launch on part edges only.",3)
 end})
 
 -- ── AUTO BOUNCE (higher) ──────────────────────────────────────
@@ -300,7 +300,7 @@ MovementTab:CreateButton({Name="Auto Bounce",Callback=function()
          if nY>=0.15 and nY<=0.92 then
             highlightSlopePart(hit.Instance)
             local fallSpd=math.abs(vy)
-            local LAUNCH_UP=math.clamp(95+fallSpd*0.95, 95, 200)
+            local LAUNCH_UP=130
             local H_PRESERVE=math.clamp(1.08+fallSpd*0.005, 1.08, 1.35)
             local slopeDir=Vector3.new(hit.Normal.X,0,hit.Normal.Z)
             local slopeBoost=slopeDir.Magnitude>0.08
