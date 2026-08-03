@@ -19,7 +19,29 @@ local Rayfield = loadstring(game:HttpGet("https://sirius.menu/gen2"))()
 local Window = Rayfield:CreateWindow({
    name = "Oridium Ware",
    subtitle = "Utility Script",
-   theme = "frost",
+   theme = {
+   -- Twilight Dark
+   WindowColor = ColorSequence.new(Color3.fromRGB(12, 10, 22), Color3.fromRGB(18, 14, 32)),
+   ShadowColor = Color3.fromRGB(0, 0, 0),
+   ContentColor = Color3.fromRGB(210, 200, 230),
+   TitlingColor = Color3.fromRGB(235, 225, 255),
+   ActionColor = Color3.fromRGB(180, 160, 220),
+   TabColor = Color3.fromRGB(220, 210, 240),
+   TabBackground = ColorSequence.new(Color3.fromRGB(40, 28, 70), Color3.fromRGB(28, 18, 52)),
+   TabStroke = ColorSequence.new(Color3.fromRGB(120, 90, 180), Color3.fromRGB(80, 55, 140)),
+   ElementGradient = ColorSequence.new(Color3.fromRGB(22, 16, 38), Color3.fromRGB(16, 12, 28)),
+   ElementStroke = Color3.fromRGB(70, 50, 110),
+   ElementStrokeHover = Color3.fromRGB(140, 110, 200),
+   AccentColor = Color3.fromRGB(150, 110, 230),
+   AccentStroke = Color3.fromRGB(180, 140, 255),
+   SliderBackground = Color3.fromRGB(28, 20, 48),
+   SliderProgress = ColorSequence.new(Color3.fromRGB(120, 80, 200), Color3.fromRGB(160, 120, 240)),
+   SliderHandle = Color3.fromRGB(200, 170, 255),
+   ToggleTrack = Color3.fromRGB(40, 30, 60),
+   FieldBackground = Color3.fromRGB(20, 14, 34),
+   PlaceholderColor = Color3.fromRGB(120, 100, 150),
+   SurfaceStroke = Color3.fromRGB(60, 45, 95),
+},
 })
 
 local MainTab     = Window:CreateTab({ name = "Main",           icon = 0 })
