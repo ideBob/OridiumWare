@@ -14,29 +14,27 @@ print("--- [ Oridium Ware Init ] ---")
 print("User: "..lp.Name.." | ID: "..tostring(lp.UserId))
 print("------------------------------")
 
-local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
-local Window = Rayfield:CreateWindow({
-   Name            = "Oridium Ware",
-   LoadingTitle    = "Oridium Ware",
-   LoadingSubtitle = "",
-   Theme           = "Blue",
-   ConfigurationSaving = { Enabled = false },
-   KeySystem       = false,
+local Window = WindUI:CreateWindow({
+   Title = "Oridium Ware",
+   Icon  = "wind",
+   Theme = "Sky",
+   Author = "Oridium",
 })
 
-task.wait(1)
-
-local MainTab     = Window:CreateTab("Main Tab",       nil)
-local MovementTab = Window:CreateTab("Movement",       nil)
-local LightingTab = Window:CreateTab("Lighting & Map", nil)
-local PshadeTab   = Window:CreateTab("Pshades Shader", nil)
+local MainTab     = Window:Tab({ Title = "Main",           Icon = "layout-grid" })
+local MovementTab = Window:Tab({ Title = "Movement",       Icon = "zap" })
+local LightingTab = Window:Tab({ Title = "Lighting & Map", Icon = "map" })
+local PshadeTab   = Window:Tab({ Title = "Pshades Shader", Icon = "sparkles" })
 
 -- ============================================================
 -- UTILITIES
 -- ============================================================
 
-local function notify(t,c,d) Rayfield:Notify({Title=t,Content=c,Duration=d or 3}) end
+local function notify(t,c,d)
+   WindUI:Notify({ Title = t, Content = c, Duration = d or 3 })
+end
 local function safeDestroy(o) if o and o.Parent then pcall(function() o:Destroy() end) end end
 local function cleanupByName(p,n)
    if not p then return end
@@ -51,7 +49,7 @@ local function setVelocity(hrp,vel)
    if not ok then pcall(function() hrp.Velocity=vel end) end
 end
 
--- Cyan / blue palette for custom UI
+-- Cyan palette for custom map loader UI
 local P = {
    bg         = Color3.fromRGB(6,  14, 22),
    bgLight    = Color3.fromRGB(10, 22, 34),
@@ -134,7 +132,6 @@ local function makeScroll(parent,pos,size)
    return scroll
 end
 
--- True only for world Parts (not characters / entities)
 local function isWorldPart(inst)
    if not inst or not inst:IsA("BasePart") then return false end
    local model = inst:FindFirstAncestorOfClass("Model")
@@ -149,8 +146,10 @@ end
 -- MAIN TAB
 -- ============================================================
 
+MainTab:Section({ Title = "Character" })
+
 local deathAuraActive=false
-MainTab:CreateButton({Name="Death Aura",Callback=function()
+MainTab:Button({Title="Death Aura",Desc="Toggle death aura particles (R6)",Callback=function()
    local char=getChar() local torso=char and char:FindFirstChild("Torso")
    if not torso or not isR6() then notify("Error","R6 required.",3) return end
    if deathAuraActive then cleanupByName(torso,"VxvFog") deathAuraActive=false notify("Removed","Death Aura off.",3) return end
@@ -163,7 +162,7 @@ MainTab:CreateButton({Name="Death Aura",Callback=function()
    deathAuraActive=true notify("Applied","Death Aura ON. Tap again to remove.",3)
 end})
 
-MainTab:CreateButton({Name="Headless",Callback=function()
+MainTab:Button({Title="Headless",Desc="Remove head mesh",Callback=function()
    local char=getChar() local head=char and char:FindFirstChild("Head")
    if not head then notify("Error","Head not found.",3) return end
    for _,v in ipairs(head:GetChildren()) do if v:IsA("SpecialMesh") or v:IsA("Decal") then safeDestroy(v) end end
@@ -171,7 +170,7 @@ MainTab:CreateButton({Name="Headless",Callback=function()
    notify("Applied","Headless on.",3)
 end})
 
-MainTab:CreateButton({Name="Korblox",Callback=function()
+MainTab:Button({Title="Korblox",Desc="Apply Korblox right leg (R6)",Callback=function()
    local char=getChar() local rl=char and char:FindFirstChild("Right Leg")
    if not rl or not isR6() then notify("Error","R6 required.",3) return end
    rl.Transparency=1 cleanupByName(rl,"KorbloxPart")
@@ -181,7 +180,7 @@ MainTab:CreateButton({Name="Korblox",Callback=function()
    notify("Success","Korblox on.",3)
 end})
 
-MainTab:CreateButton({Name="Remove Korblox",Callback=function()
+MainTab:Button({Title="Remove Korblox",Callback=function()
    local char=getChar() local rl=char and char:FindFirstChild("Right Leg")
    if rl then cleanupByName(rl,"KorbloxPart") rl.Transparency=0 notify("Removed","Korblox off.",3) end
 end})
@@ -190,12 +189,10 @@ end})
 -- MOVEMENT TAB
 -- ============================================================
 
--- ── AUTO EDGE TRIMP (reworked) ────────────────────────────────
--- Only triggers on edge of a world Part (not players/entities).
--- Fixed upward launch: 130 studs.
+MovementTab:Section({ Title = "Movement" })
 
 local edgeActive=false local edgeConn=nil
-MovementTab:CreateButton({Name="Auto Edge Trimp",Callback=function()
+MovementTab:Button({Title="Auto Edge Trimp",Desc="130 stud launch on world part edges",Callback=function()
    if edgeActive then
       edgeActive=false
       if edgeConn then edgeConn:Disconnect() edgeConn=nil end
@@ -257,8 +254,6 @@ MovementTab:CreateButton({Name="Auto Edge Trimp",Callback=function()
    notify("Edge Trimp","ON — 130 stud launch on part edges only.",3)
 end})
 
--- ── AUTO BOUNCE (higher) ──────────────────────────────────────
-
 local bounceActive=false local bounceConn=nil local bounceHighlight=nil
 
 local function highlightSlopePart(part)
@@ -274,7 +269,7 @@ local function highlightSlopePart(part)
    end)
 end
 
-MovementTab:CreateButton({Name="Auto Bounce",Callback=function()
+MovementTab:Button({Title="Auto Bounce",Desc="130 stud bounce on slopes",Callback=function()
    if bounceActive then
       bounceActive=false
       if bounceConn then bounceConn:Disconnect() bounceConn=nil end
@@ -316,16 +311,13 @@ MovementTab:CreateButton({Name="Auto Bounce",Callback=function()
          end
       end
    end)
-   notify("Auto Bounce","ON — higher launch.",3)
+   notify("Auto Bounce","ON — 130 launch.",3)
 end})
-
--- ── ORIDIUM WALK (wall walk) ──────────────────────────────────
--- Hold W + Space while against a wall → stick and walk on it.
 
 local walkActive=false local walkConn=nil local walkJumpConn=nil
 local walkStuck=false local walkNormal=Vector3.zero
 
-MovementTab:CreateButton({Name="Oridium Walk",Callback=function()
+MovementTab:Button({Title="Oridium Walk",Desc="Hold W + Space on a wall to climb",Callback=function()
    if walkActive then
       walkActive=false walkStuck=false
       if walkConn then walkConn:Disconnect() walkConn=nil end
@@ -399,6 +391,8 @@ end})
 -- LIGHTING & MAP TAB
 -- ============================================================
 
+LightingTab:Section({ Title = "Map Loader" })
+
 local LoadedMap=nil local selectedMapKey=nil
 local mapLibrary={
    {label="Sab Map",        id="96439444595951"},
@@ -412,7 +406,7 @@ local mapLibrary={
    {label="Free Fire",      id="136952494452456"},
 }
 local mapLoaderGui=nil
-LightingTab:CreateButton({Name="Open Map Loader",Callback=function()
+LightingTab:Button({Title="Open Map Loader",Desc="Browse and load maps",Callback=function()
    if mapLoaderGui then safeDestroy(mapLoaderGui) mapLoaderGui=nil return end
    local sg=Instance.new("ScreenGui") sg.Name="OwMapLoader" sg.ResetOnSpawn=false sg.IgnoreGuiInset=true sg.DisplayOrder=994 sg.Parent=lp.PlayerGui mapLoaderGui=sg
    local card=makeCard(sg,290,420) makeCardHeader(card,"  Map Loader",function() safeDestroy(sg) mapLoaderGui=nil end)
@@ -457,35 +451,55 @@ LightingTab:CreateButton({Name="Open Map Loader",Callback=function()
    end
 end})
 
-LightingTab:CreateSlider({Name="Model Height",Range={-200,200},Increment=1,Suffix=" Studs",CurrentValue=0,Flag="HeightSlider",Callback=function(v)
-   if not LoadedMap then return end
-   if LoadedMap:IsA("Model") then local cf=LoadedMap:GetModelCFrame() LoadedMap:MoveTo(Vector3.new(cf.p.X,v,cf.p.Z))
-   elseif LoadedMap:IsA("BasePart") then LoadedMap.Position=Vector3.new(LoadedMap.Position.X,v,LoadedMap.Position.Z) end
-end})
-LightingTab:CreateSlider({Name="Time of Day",Range={0,24},Increment=0.5,Suffix=" hrs",CurrentValue=14,Flag="TimeSlider",Callback=function(v) Lighting.ClockTime=v end})
+LightingTab:Section({ Title = "Lighting" })
+
+LightingTab:Slider({
+   Title = "Model Height",
+   Step = 1,
+   Value = { Min = -200, Max = 200, Default = 0 },
+   Callback = function(v)
+      if not LoadedMap then return end
+      if LoadedMap:IsA("Model") then local cf=LoadedMap:GetModelCFrame() LoadedMap:MoveTo(Vector3.new(cf.p.X,v,cf.p.Z))
+      elseif LoadedMap:IsA("BasePart") then LoadedMap.Position=Vector3.new(LoadedMap.Position.X,v,LoadedMap.Position.Z) end
+   end,
+})
+
+LightingTab:Slider({
+   Title = "Time of Day",
+   Step = 0.5,
+   Value = { Min = 0, Max = 24, Default = 14 },
+   Callback = function(v) Lighting.ClockTime=v end,
+})
 
 local skyboxIdInput=""
-LightingTab:CreateInput({Name="Skybox Asset ID",PlaceholderText="Enter skybox asset ID...",RemoveTextAfterFocusLost=false,Callback=function(val) skyboxIdInput=val end})
-LightingTab:CreateButton({Name="Apply Skybox ID",Callback=function()
-   local id=skyboxIdInput:match("^%s*(.-)%s*$")
+LightingTab:Input({
+   Title = "Skybox Asset ID",
+   Placeholder = "Enter skybox asset ID...",
+   Callback = function(val) skyboxIdInput=val end,
+})
+
+LightingTab:Button({Title="Apply Skybox ID",Callback=function()
+   local id=tostring(skyboxIdInput or ""):match("^%s*(.-)%s*$")
    if id=="" then notify("Skybox","Enter an asset ID first.",3) return end
    for _,v in ipairs(Lighting:GetChildren()) do if v:IsA("Sky") then v:Destroy() end end
    local sky=Instance.new("Sky",Lighting) local base="rbxassetid://"..id
    sky.SkyboxBk=base sky.SkyboxDn=base sky.SkyboxFt=base sky.SkyboxLf=base sky.SkyboxRt=base sky.SkyboxUp=base
    notify("Skybox Applied","ID: "..id,3)
 end})
-LightingTab:CreateButton({Name="Remove Skybox",Callback=function()
+
+LightingTab:Button({Title="Remove Skybox",Callback=function()
    local removed=false for _,v in ipairs(Lighting:GetChildren()) do if v:IsA("Sky") then v:Destroy() removed=true end end
    notify("Skybox",removed and "Removed." or "No skybox found.",3)
 end})
 
 -- ============================================================
 -- PSHADES SHADER TAB
--- Loads PShade Ultimate (external). Own UI opens after load.
 -- ============================================================
 
+PshadeTab:Section({ Title = "PShade Ultimate" })
+
 local pshadeLoaded=false
-PshadeTab:CreateButton({Name="Load PShade Ultimate",Callback=function()
+PshadeTab:Button({Title="Load PShade Ultimate",Desc="Loads external shader UI (once per session)",Callback=function()
    if pshadeLoaded or _G.pshade then
       notify("PShade","Already loaded.",3)
       return
@@ -505,7 +519,10 @@ PshadeTab:CreateButton({Name="Load PShade Ultimate",Callback=function()
    end)
 end})
 
-PshadeTab:CreateParagraph({Title="About",Content="Loads PShade Ultimate by @Im_patrick. Opens its own shader UI after load. Run once per session."})
+PshadeTab:Section({
+   Title = "Loads PShade Ultimate by @Im_patrick. Opens its own shader UI after load.",
+   TextTransparency = 0.35,
+})
 
 -- [[ SIGNATURE ]] --
 print("--- [ Oridium Ware ] ---")
